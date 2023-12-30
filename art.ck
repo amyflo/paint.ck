@@ -9,8 +9,9 @@ spork ~ mouse.selfUpdate(); // start updating mouse position
 120 => int BPM;  // beats per minute
 (1.0/BPM)::minute / 2.0 => dur STEP;  // step duration
 16 => int NUM_STEPS;  // steps per sequence]
+1 => int PLAYING;
+1 => int HORIZONTAL;
 
-1 => int  PLAYING;
 
 [
     60,
@@ -55,6 +56,8 @@ D_SHARP => int selected;
 GG.scene() @=> GScene @ scene;
 GG.camera() @=> GCamera @ cam;
 cam.orthographic();  // Orthographic camera mode for 2D scene
+GG.fullscreen();
+scene.backgroundColor(Color.WHITE);
 
 GGen kickPadGroup --> GG.scene();        // bottom row
 GGen snarePadGroup --> GG.scene();       // top row
@@ -110,7 +113,7 @@ fun void placePadsHorizontal(GPad pads[], GGen @ parent, float width, float y) {
         pad --> parent;
 
         // set transform
-        pad.sca(padSpacing * .7);
+
         pad.posX(padSpacing * i - width / 2.0 + padSpacing / 2.0);
     }
     parent.posY(y);  // position the entire row
@@ -132,8 +135,7 @@ fun void placePadsVertical(GPad pads[], GGen @ parent, float height, float width
         pad --> parent;
 
         // set transform
-        // pad.sca(padSpacing * .7);
-        pad.sca(0.8);
+        pad.sca(padSpacing);
         pad.posY(padSpacing * i - height / 2.0 + padSpacing / 2.0);
         pad.posX(padSpacing * idx - width / 2.0 + padSpacing / 2.0);
     }
@@ -143,65 +145,16 @@ fun void placePadsVertical(GPad pads[], GGen @ parent, float height, float width
 // Instruments ==================================================================
 
 class AcidBass extends Chugraph {
-    SawOsc saw1, saw2;
-    ADSR env;                                      // amplitude EG
-    Step step => Envelope filterEnv => blackhole;  // filter cutoff EG
-    LPF filter;
+    inlet => Wurley voc => JCRev r => ADSR e => outlet;
 
-    TriOsc freqLFO => blackhole;  // LFO to modulate filter frequency
-    TriOsc qLFO => blackhole;     // LFO to modulate filter resonance
-    saw1 => env => filter => Gain g => outlet;
-    saw2 => env => filter;
-
-    // initialize amp EG
-    env.set(40::ms, 10::ms, .6, 150::ms);
-
-    // initialize filter EG
-    step.next(1.0);
-    filterEnv.duration(50::ms);
-
-    // initialize filter LFOs
-    freqLFO.period(8::second);
-    qLFO.period(10::second);
-
-    // initialize filter
-    filter.freq(1500);
-    filter.Q(10);
-
-    fun void modulate() {
-        while (true) {
-            // remap [-1, 1] --> [100, 2600]
-            Math.map(freqLFO.last(), -1.0, 1.0, 100, 12000) => float filterFreq;
-            // remap [-1, 1] --> [1, 10]
-            Math.map(qLFO.last(), -1.0, 1.0, .1, 8) => filter.Q;
-             
-            // apply filter EG
-            filterEnv.last() * filterFreq + 100 => filter.freq;
-
-            1::ms => now;
-        }
-    } spork ~ modulate();
-
-    // spork to play!
-    fun void play(int note) {
-
-        Std.mtof(SCALE[note - 3]) => float freq;
-
-        // set frequencies
-        saw1.freq(freq);
-        saw2.freq(2 * freq * 1.01); // slight detune for more harmonic content
-    
-
-        // activate EGs
-        env.keyOn(); filterEnv.keyOn();
-        // wait for note to hit sustain portion of ADSR
-        env.attackTime() + env.decayTime() => now;
-        // deactivate EGs
-        env.keyOff(); filterEnv.keyOff();
-        // wait for note to finish
-        env.releaseTime() => now;
-    } 
-
+    fun void play(int note){
+        Std.mtof(SCALE[note - 3]) => voc.freq;
+        .6 => voc.noteOn;
+        e.keyOn();
+        50::ms => now;
+        e.keyOff();
+        e.releaseTime() => now;
+    }
 }
 
 // base class for percussion instruments
@@ -223,6 +176,18 @@ for (auto bass : acidBasses) {
 
 
 
+fun void clear(){
+    setAll(NONE);
+}
+
+fun void setAll(int note){
+    for (int i; i < NUM_STEPS; i++) {
+        for (int j; j < SCALE.size(); j++){
+            acidBassPads[i][j].setState(note);
+        }
+    }
+}
+
 fun void setSelected(int note){
     note => selected;
 
@@ -234,48 +199,20 @@ fun void setSelected(int note){
     }
 }
 
-spork ~ sequenceLead(acidBasses, acidBassPads, SCALE, 60 - 2 * 12, STEP / 2.0);
+spork ~ sequenceLeadHorizontal(acidBasses, acidBassPads, SCALE, 60 - 2 * 12, STEP / 2.0);
+spork ~ sequenceLeadVertical(acidBasses, acidBassPads, SCALE, 60 - 2 * 12, STEP / 2.0);
 
-// sequence percussion (monophonic)
-fun void sequenceBeat(Instrument @ instrument, GPad pads[], int rev, dur step) {
-    0 => int i;
-    if (rev) pads.size() - 1 => i;
+
+fun void sequenceLeadHorizontal(AcidBass leads[], GPad pads[][], int scale[], int root, dur step) {
     while (PLAYING) {
-        false => int juice;
-        if (pads[i].active()) {
-            true => juice;
-            spork ~ instrument.play();  // play sound
-        }
-        // start animation
-        pads[i].play(juice);  // must happen after .active() check
-        // pass time
-        step => now;
-        // stop animation
-        pads[i].stop();
-
-        // bump index, wrap around playhead to other end
-        if (rev) {
-            i--;
-            if (i < 0) pads.size() - 1 => i;
-        } else {
-            i++;
-            if (i >= pads.size()) 0 => i;
-        }
-    }
-} 
-
-// sequence lead (polyphonic)
-fun void sequenceLead(AcidBass leads[], GPad pads[][], int scale[], int root, dur step) {
-    while (true) {
         for (0 => int i; i < pads.size(); i++) {
             pads[i] @=> GPad col[];
             // play all active pads in column
 
             for (0 => int j; j < col.size(); j++) {
-                if (col[j].active()) {
+                if (col[j].active() && HORIZONTAL) {
                     col[j].play(true);
 
-                    // TODO: play the note based on the color
                     spork ~ leads[j].play(col[j].getState());
                 }
             }
@@ -284,6 +221,31 @@ fun void sequenceLead(AcidBass leads[], GPad pads[][], int scale[], int root, du
             // stop all animations
             for (0 => int j; j < col.size(); j++) {
                 col[j].stop();
+            }
+        }
+    }
+}
+
+fun void sequenceLeadVertical(AcidBass leads[], GPad pads[][], int scale[], int root, dur step) {
+    while (PLAYING) {
+        for (0 => int i; i < pads[0].size(); i++) {
+            // play all active pads in column
+
+            for (0 => int j; j < pads.size(); j++) {
+
+                pads[j][i] @=> GPad pad;
+                if (pad.active() && !HORIZONTAL) {
+                    pad.play(true);
+
+                    spork ~ leads[i].play(pad.getState());
+                }
+            }
+            // pass time
+            step => now;
+            // stop all animations
+            for (0 => int j; j < pads.size(); j++) {
+                pads[j][i] @=> GPad pad;
+                pad.stop();
             }
         }
     }
@@ -336,6 +298,31 @@ fun void handleKeyboard(){
     if (KB.isKeyDown(KB.KEY_E)){
         setSelected(NONE);
     }
+    if (KB.isKeyDown(KB.KEY_R)){
+        clear();
+    }
+    if (KB.isKeyDown(KB.KEY_A)){
+        setAll(selected);
+    }
+
+    if (KB.isKeyDown(KB.KEY_SPACE)){
+        if (PLAYING){
+            0 => PLAYING;
+        } else {
+            1 => PLAYING;
+        }
+        
+    }
+
+     if (KB.isKeyDown(KB.KEY_H)){
+        if (HORIZONTAL){
+            0 => HORIZONTAL;
+        } else {
+            1 => HORIZONTAL;
+        }
+        
+    }
+
     16::ms => now;
 }
 

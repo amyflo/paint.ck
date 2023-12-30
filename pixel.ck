@@ -83,6 +83,10 @@ public class GPad extends GGen {
         note => selected;
     }
 
+    fun void setState(int note) {
+        note => state;
+    }
+
     fun int getState() {
         return state;
     }
@@ -144,7 +148,7 @@ public class GPad extends GGen {
     }
 
     fun void animate_out(){
-        pad.scaX()  + .05 * (0.9 - pad.scaX()) => pad.sca;
+        pad.scaX()  + .05 * (1 - pad.scaX()) => pad.sca;
     }
 
     // stop play animation (called by sequencer on note off)
@@ -163,7 +167,6 @@ public class GPad extends GGen {
     fun void enter(int s) {
         state => lastState;
         s => state;
-
         // set color when playing to the last state
         // if (state > PLAYING) colorMap[lastState] => colorMap[PLAYING];
     }
