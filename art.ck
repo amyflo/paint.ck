@@ -13,7 +13,18 @@ spork ~ mouse.selfUpdate(); // start updating mouse position
 1 => int  PLAYING;
 
 [
-    -5, -2, 0, 3, 5, 7, 10, 12, 15
+    60,
+61,
+62,
+63,
+64,
+65,
+66,
+67,
+68,
+69,
+70,
+71
 ] @=> int SCALE[];  // relative MIDI offsets for minor pentatonic scale
 
 
@@ -49,16 +60,12 @@ GGen kickPadGroup --> GG.scene();        // bottom row
 GGen snarePadGroup --> GG.scene();       // top row
 GGen openHatPadGroup --> GG.scene();     // left column
 GGen closedHatPadGroup --> GG.scene();   // right column
+
 GGen acidBassGroups[NUM_STEPS];          // one group per column
 for (auto group : acidBassGroups) group --> GG.scene();
 
 // lead pads
 GPad acidBassPads[NUM_STEPS][SCALE.size()];
-// percussion pads
-GPad kickPads[NUM_STEPS];
-GPad snarePads[NUM_STEPS];
-GPad openHatPads[NUM_STEPS];
-GPad closedHatPads[NUM_STEPS];
 
 // update pad positions on window resize
 fun void resizeListener() {
@@ -177,11 +184,13 @@ class AcidBass extends Chugraph {
 
     // spork to play!
     fun void play(int note) {
-        Std.mtof(note) => float freq;
+
+        Std.mtof(SCALE[note - 3]) => float freq;
 
         // set frequencies
         saw1.freq(freq);
         saw2.freq(2 * freq * 1.01); // slight detune for more harmonic content
+    
 
         // activate EGs
         env.keyOn(); filterEnv.keyOn();
@@ -200,57 +209,6 @@ class Instrument extends Chugraph {
     fun void play() {}
 }
 
-// Synthesized percussion instruments are borrowed (stolen!)
-// from Tristan Peng's HW1: https://ccrma.stanford.edu/~pengt/256a/hw1.html
-
-// thanks Tristan
-class Kick extends Instrument { 
-    inlet => Noise n => LPF f => ADSR e => outlet;
-    110 => f.freq;
-    40 => f.gain;
-    e.set(5::ms, 50::ms, 0.1, 100::ms);
-
-    fun void play() {
-        e.keyOn();
-        50::ms => now;
-        e.keyOff();
-        e.releaseTime() => now;
-    }
-}
-
-// thanks Tristan
-class Snare extends Instrument {  
-    inlet => Noise n => BPF f => ADSR e => outlet;
-    440 => f.freq;
-    15. => f.Q;
-    15 => f.gain;
-    e.set(5::ms, 50::ms, 0.1, 50::ms);
-
-    fun void play() {
-        e.keyOn();
-        50::ms => now;
-        e.keyOff();
-        e.releaseTime() => now;
-    }
-
-}
-
-// thanks Tristan
-class Hat extends Instrument {
-    inlet => Noise n => HPF f => ADSR e => outlet;
-    2500 => f.freq;
-    0.05 => f.gain;
-    e.set(5::ms, 50::ms, 0.1, 100::ms);
-
-    fun void play() {
-        e.keyOn();
-        50::ms => now;
-        e.keyOff();
-        e.releaseTime() => now;
-    }
-}
-
-
 // Sequencer ===================================================================
 Gain main => JCRev rev => dac;  // main bus
 .1 => main.gain;
@@ -263,11 +221,6 @@ for (auto bass : acidBasses) {
     bass.gain(3.0 / acidBasses.size());  // reduce gain according to # of voices
 }
 
-// initialize percussion instruments
-Kick kick => main;
-Snare snare => main;
-Hat openHat => main;
-Hat closedHat => main;
 
 
 fun void setSelected(int note){
@@ -275,23 +228,12 @@ fun void setSelected(int note){
 
     // set basic pads
     for (int i; i < NUM_STEPS; i++) {
-        kickPads[i].setSelected(selected);
-        snarePads[i].setSelected(selected);
-        openHatPads[i].setSelected(selected);
-        closedHatPads[i].setSelected(selected);
         for (int j; j < SCALE.size(); j++){
             acidBassPads[i][j].setSelected(selected);
         }
     }
 }
 
-
-
-// sequence instruments!
-spork ~ sequenceBeat(kick, kickPads, true, STEP);
-spork ~ sequenceBeat(snare, snarePads, false, STEP / 2.0);
-spork ~ sequenceBeat(openHat, openHatPads, false, STEP / 2.0);
-spork ~ sequenceBeat(closedHat, closedHatPads, true, STEP / 2.0);
 spork ~ sequenceLead(acidBasses, acidBassPads, SCALE, 60 - 2 * 12, STEP / 2.0);
 
 // sequence percussion (monophonic)
@@ -328,11 +270,13 @@ fun void sequenceLead(AcidBass leads[], GPad pads[][], int scale[], int root, du
         for (0 => int i; i < pads.size(); i++) {
             pads[i] @=> GPad col[];
             // play all active pads in column
+
             for (0 => int j; j < col.size(); j++) {
                 if (col[j].active()) {
                     col[j].play(true);
+
                     // TODO: play the note based on the color
-                    spork ~ leads[j].play(root + scale[j]);
+                    spork ~ leads[j].play(col[j].getState());
                 }
             }
             // pass time
@@ -346,9 +290,6 @@ fun void sequenceLead(AcidBass leads[], GPad pads[][], int scale[], int root, du
 }
 
 
-// // KBManager usage
-// KBManager IM;
-// spork ~ IM.start(0);
 
 fun void handleKeyboard(){
     if (KB.isKeyDown(KB.KEY_1)){
