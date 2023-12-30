@@ -331,6 +331,7 @@ fun void sequenceLead(AcidBass leads[], GPad pads[][], int scale[], int root, du
             for (0 => int j; j < col.size(); j++) {
                 if (col[j].active()) {
                     col[j].play(true);
+                    // TODO: play the note based on the color
                     spork ~ leads[j].play(root + scale[j]);
                 }
             }
