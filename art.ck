@@ -293,7 +293,7 @@ fun void noteSwitch(){
 }
 
 fun void handleKeyboard(){
-    noteSwitch();
+    noteSwitch
     16::ms => now;
 }
 
