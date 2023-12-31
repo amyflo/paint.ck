@@ -29,6 +29,7 @@ public class GPad extends GGen {
     13 => static int A_SHARP;
 
     14 => static int B;
+    15 => static int B_SHARP;
 
     [
         Color.WHITE,    // NONE
@@ -47,7 +48,8 @@ public class GPad extends GGen {
         Color.BROWN, // G#
         Color.BLACK,// A
         Color.MAROON,// A#
-        Color.GOLD // B
+        Color.GOLD, // B
+        Color.LIGHTGRAY // B
     ] @=> vec3 colorMap[];
 
     // input types
