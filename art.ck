@@ -6,15 +6,19 @@ spork ~ mouse.selfUpdate(); // start updating mouse position
 
 // Global Sequencer Params ====================================================
 
-120 => int BPM;  // beats per minute
+30 => int BPM;  // beats per minute
 (1.0/BPM)::minute / 2.0 => dur STEP;  // step duration
-16 => int NUM_STEPS;  // steps per sequence]
+8 => int NUM_STEPS;  // steps per sequence]
 1 => int PLAYING;
-1 => int HORIZONTAL;
+0 => int MODE;
+
+0 => int HORIZONTAL;
+1 => int VERTICAL;
+3::second => dur TIME;
 
 
 [
-    60,
+60,
 61,
 62,
 63,
@@ -56,8 +60,8 @@ D_SHARP => int selected;
 GG.scene() @=> GScene @ scene;
 GG.camera() @=> GCamera @ cam;
 cam.orthographic();  // Orthographic camera mode for 2D scene
-GG.fullscreen();
-scene.backgroundColor(Color.WHITE);
+// GG.fullscreen();
+scene.backgroundColor(Color.DARKGRAY);
 
 GGen kickPadGroup --> GG.scene();        // bottom row
 GGen snarePadGroup --> GG.scene();       // top row
@@ -68,7 +72,7 @@ GGen acidBassGroups[NUM_STEPS];          // one group per column
 for (auto group : acidBassGroups) group --> GG.scene();
 
 // lead pads
-GPad acidBassPads[NUM_STEPS][SCALE.size()];
+GPad acidBassPads[NUM_STEPS * 2][NUM_STEPS];
 
 // update pad positions on window resize
 fun void resizeListener() {
@@ -87,7 +91,7 @@ fun void placePads() {
     (GG.frameWidth() * 1.0) / (GG.frameHeight() * 1.0) => float aspect;
     // calculate ratio between old and new height/width
     cam.viewSize() => float frustrumHeight;  // height of screen in world-space units
-    frustrumHeight * aspect => float frustrumWidth;  // widht of the screen in world-space units
+    frustrumHeight * aspect => float frustrumWidth;  // width of the screen in world-space units
     frustrumWidth / NUM_STEPS => float padSpacing;
 
 
@@ -135,7 +139,7 @@ fun void placePadsVertical(GPad pads[], GGen @ parent, float height, float width
         pad --> parent;
 
         // set transform
-        pad.sca(padSpacing);
+        pad.sca(padSpacing*0.95);
         pad.posY(padSpacing * i - height / 2.0 + padSpacing / 2.0);
         pad.posX(padSpacing * idx - width / 2.0 + padSpacing / 2.0);
     }
@@ -145,13 +149,13 @@ fun void placePadsVertical(GPad pads[], GGen @ parent, float height, float width
 // Instruments ==================================================================
 
 class AcidBass extends Chugraph {
-    inlet => Wurley voc => JCRev r => ADSR e => outlet;
+    inlet => TubeBell voc => JCRev r => ADSR e => outlet;
 
     fun void play(int note){
         Std.mtof(SCALE[note - 3]) => voc.freq;
-        .6 => voc.noteOn;
+        .9 => voc.noteOn;
         e.keyOn();
-        50::ms => now;
+        TIME => now;
         e.keyOff();
         e.releaseTime() => now;
     }
@@ -182,7 +186,7 @@ fun void clear(){
 
 fun void setAll(int note){
     for (int i; i < NUM_STEPS; i++) {
-        for (int j; j < SCALE.size(); j++){
+        for (int j; j < NUM_STEPS; j++){
             acidBassPads[i][j].setState(note);
         }
     }
@@ -193,24 +197,21 @@ fun void setSelected(int note){
 
     // set basic pads
     for (int i; i < NUM_STEPS; i++) {
-        for (int j; j < SCALE.size(); j++){
+        for (int j; j < NUM_STEPS; j++){
             acidBassPads[i][j].setSelected(selected);
         }
     }
 }
 
-spork ~ sequenceLeadHorizontal(acidBasses, acidBassPads, SCALE, 60 - 2 * 12, STEP / 2.0);
-spork ~ sequenceLeadVertical(acidBasses, acidBassPads, SCALE, 60 - 2 * 12, STEP / 2.0);
-
 
 fun void sequenceLeadHorizontal(AcidBass leads[], GPad pads[][], int scale[], int root, dur step) {
-    while (PLAYING) {
-        for (0 => int i; i < pads.size(); i++) {
+    while (true) {
+        for (0 => int i; i < NUM_STEPS; i++) {
             pads[i] @=> GPad col[];
             // play all active pads in column
 
-            for (0 => int j; j < col.size(); j++) {
-                if (col[j].active() && HORIZONTAL) {
+            for (0 => int j; j < NUM_STEPS; j++) {
+                if (col[j].active() && MODE == HORIZONTAL && PLAYING) {
                     col[j].play(true);
 
                     spork ~ leads[j].play(col[j].getState());
@@ -219,22 +220,26 @@ fun void sequenceLeadHorizontal(AcidBass leads[], GPad pads[][], int scale[], in
             // pass time
             step => now;
             // stop all animations
-            for (0 => int j; j < col.size(); j++) {
+            for (0 => int j; j < NUM_STEPS; j++) {
                 col[j].stop();
             }
         }
     }
 }
 
+spork ~ sequenceLeadHorizontal(acidBasses, acidBassPads, SCALE, 60 - 2 * 12, STEP / 2.0);
+spork ~ sequenceLeadVertical(acidBasses, acidBassPads, SCALE, 60 - 2 * 12, STEP / 2.0);
+
+
 fun void sequenceLeadVertical(AcidBass leads[], GPad pads[][], int scale[], int root, dur step) {
-    while (PLAYING) {
+    while (true) {
         for (0 => int i; i < pads[0].size(); i++) {
             // play all active pads in column
 
             for (0 => int j; j < pads.size(); j++) {
 
                 pads[j][i] @=> GPad pad;
-                if (pad.active() && !HORIZONTAL) {
+                if (pad.active() && MODE == VERTICAL && PLAYING) {
                     pad.play(true);
 
                     spork ~ leads[i].play(pad.getState());
@@ -305,22 +310,20 @@ fun void handleKeyboard(){
         setAll(selected);
     }
 
-    if (KB.isKeyDown(KB.KEY_SPACE)){
+    if (KB.isKeyDown(KB.KEY_P)){
         if (PLAYING){
             0 => PLAYING;
+            <<< "paused" >>>;
         } else {
             1 => PLAYING;
+            <<< "playing" >>>;
         }
-        
     }
 
-     if (KB.isKeyDown(KB.KEY_H)){
-        if (HORIZONTAL){
-            0 => HORIZONTAL;
-        } else {
-            1 => HORIZONTAL;
-        }
-        
+     if (KB.isKeyDown(KB.KEY_M)){
+        1 +=> MODE;
+        MODE % 2 => MODE;  
+        <<< MODE >>>;      
     }
 
     16::ms => now;

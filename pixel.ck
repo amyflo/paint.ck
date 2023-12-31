@@ -1,6 +1,8 @@
 public class GPad extends GGen {
     // initialize mesh
     GPlane pad --> this;
+
+    1  => static float ALPHA;
     FlatMaterial mat;
     pad.mat(mat);
     
@@ -30,7 +32,7 @@ public class GPad extends GGen {
 
     [
         Color.WHITE,    // NONE
-        Color.GRAY,      // HOVERED
+        Color.LIGHTGRAY,      // HOVERED
         Color.BLACK,     // PLAYING
 
         // ACTIVE
@@ -38,14 +40,14 @@ public class GPad extends GGen {
         Color.ORANGE, // C#
         Color.YELLOW, // D
         Color.GREEN, // D#
-        Color.DARKGREEN,// E
-        Color.BLUE,// F
-        Color.DARKBLUE,// F#
-        Color.MAGENTA, // G
-        Color.VIOLET, // G#
-        Color.PINK,// A
+        Color.BLUE,// E
+        Color.MAGENTA,// F
+        Color.VIOLET,// F#
+        Color.PINK, // G
+        Color.BROWN, // G#
+        Color.BLACK,// A
         Color.MAROON,// A#
-        Color.BROWN // B
+        Color.GOLD // B
     ] @=> vec3 colorMap[];
 
     // input types
@@ -128,7 +130,10 @@ public class GPad extends GGen {
     fun void clickListener() {
         now => time lastClick;
         while (true) {
+           
             mouse.mouseDownEvents[Mouse.LEFT_CLICK] => now;
+
+            <<< "clicked" >>>;
             if (isHovered()) {
                 onClickEvent.broadcast();
                 handleInput(MOUSE_CLICK);
@@ -144,7 +149,7 @@ public class GPad extends GGen {
     }
 
     fun void animate_in(){
-        pad.sca(0.5);
+        pad.sca(1.1);
     }
 
     fun void animate_out(){
