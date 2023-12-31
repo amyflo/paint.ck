@@ -245,57 +245,55 @@ fun void setSelected(int note){
     }
 }
 
+fun void noteSwitch(){
+    if (KB.isKeyDown(KB.KEY_1)){
+        setSelected(C);
+    }
 
-[
-    KB.KEY_1, C,
-    KB.KEY_2, C_SHARP,
-    KB.KEY_3, D,
-    KB.KEY_4, D_SHARP,
-    KB.KEY_5, E,
-    KB.KEY_6, F,
-    KB.KEY_7, F_SHARP,
-    KB.KEY_8, G,
-    KB.KEY_9, G_SHARP,
-    KB.KEY_0, A,
-    KB.KEY_MINUS, A_SHARP,
-    KB.KEY_EQUAL, B,
-    KB.KEY_E, NONE,
-    KB.KEY_R, CLEAR,
-    KB.KEY_A, SET_ALL,
-    KB.KEY_M, CHANGE_MODE
-] @=> int keyNoteMap[];
+    if (KB.isKeyDown(KB.KEY_2)){
+        setSelected(C_SHARP);
+    }
+
+    if (KB.isKeyDown(KB.KEY_3)){
+        setSelected(D);
+    }
+
+    if (KB.isKeyDown(KB.KEY_4)){
+        setSelected(D_SHARP);
+    }
+
+    if (KB.isKeyDown(KB.KEY_5)){
+        setSelected(E);
+    }
+
+    if (KB.isKeyDown(KB.KEY_6)){
+        setSelected(F);
+    }
+    if (KB.isKeyDown(KB.KEY_7)){
+        setSelected(F_SHARP);
+    }
+    if (KB.isKeyDown(KB.KEY_8)){
+        setSelected(G);
+    }
+    if (KB.isKeyDown(KB.KEY_9)){
+        setSelected(G_SHARP);
+    }
+    if (KB.isKeyDown(KB.KEY_0)){
+        setSelected(A);
+    }
+    if (KB.isKeyDown(KB.KEY_MINUS)){
+        setSelected(A_SHARP);
+    }
+    if (KB.isKeyDown(KB.KEY_MINUS)){
+        setSelected(B);
+    }
+    if (KB.isKeyDown(KB.KEY_E)){
+        setSelected(NONE);
+    }
+}
 
 fun void handleKeyboard(){
-    for (0 => int i; i < keyNoteMap.size(); 2 + i =>i) {
-        if (KB.isKeyDown(keyNoteMap[i])) {
-            keyNoteMap[i + 1] @=> int  command;
-            if (command == CLEAR){
-                clear();
-                break;
-            } else if (command == SET_ALL){
-                setAll(selected);
-                break;
-            } else if (command == CHANGE_MODE){
-                1 +=> MODE;
-                MODE % MODES => MODE;  
-            } else {
-                setSelected(selected);
-            }
-        }
-    }
-    
-
-    if (KB.isKeyDown(KB.KEY_SPACE)){
-        if (PLAYING){
-            0 => PLAYING;
-            <<< "paused" >>>;
-        } else {
-            1 => PLAYING;
-            <<< "playing" >>>;
-        }
-    }
-
-
+    noteSwitch();
     16::ms => now;
 }
 
