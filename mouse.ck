@@ -48,12 +48,10 @@ public class Mouse
                 {
                     1 => mouseState[msg.which];
                     mouseDownEvents[msg.which].broadcast();
-                    <<< "mouse down">>>;
                 }
                 // mouse button up
                 else if( msg.isButtonUp() ) {
                     0 => mouseState[msg.which];
-                    <<< "mouse up">>>;
                 }
 
                 
@@ -61,7 +59,6 @@ public class Mouse
             if (mouseState[LEFT_CLICK]) {
                     2 => mouseState[msg.which];
                     mouseDownEvents[msg.which].broadcast();
-                    <<< "dragging">>>;
                 }
         }
     }

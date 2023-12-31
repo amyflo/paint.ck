@@ -133,7 +133,6 @@ public class GPad extends GGen {
            
             mouse.mouseDownEvents[Mouse.LEFT_CLICK] => now;
 
-            <<< "clicked" >>>;
             if (isHovered()) {
                 onClickEvent.broadcast();
                 handleInput(MOUSE_CLICK);
@@ -173,7 +172,7 @@ public class GPad extends GGen {
         state => lastState;
         s => state;
         // set color when playing to the last state
-        // if (state > PLAYING) colorMap[lastState] => colorMap[PLAYING];
+        if (state == HOVERED) colorMap[selected] => colorMap[HOVERED];
     }
 
     // basic state machine for handling input
@@ -196,6 +195,7 @@ public class GPad extends GGen {
             if (input == NOTE_OFF)         enter(lastState);
         } else {
             if (input == MOUSE_CLICK)      enter(selected);
+            if (input == MOUSE_HOVER)      enter(HOVERED);
         }
 
     }
