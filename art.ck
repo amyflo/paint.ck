@@ -22,7 +22,7 @@ spork ~ mouse.selfUpdate(); // start updating mouse position
 
 // Musical constants ====================================================
 
-[60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71] @=> int SCALE[];
+[60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73] @=> int SCALE[];
 
 // Note constants
 0 => int NONE;
@@ -46,10 +46,11 @@ spork ~ mouse.selfUpdate(); // start updating mouse position
 13 => int A_SHARP;
 
 14 => int B;
+15 => int B_SHARP;
 
-15 => int CLEAR;
-16 => int SET_ALL;
-17 => int CHANGE_MODE;
+16 => int CLEAR;
+17 => int SET_ALL;
+18 => int CHANGE_MODE;
 
 // Initial selected note
 C => int selected;
@@ -287,13 +288,16 @@ fun void noteSwitch(){
     if (KB.isKeyDown(KB.KEY_MINUS)){
         setSelected(B);
     }
-    if (KB.isKeyDown(KB.KEY_E)){
+    if (KB.isKeyDown(KB.KEY_EQUAL)){
+        setSelected(B_SHARP);
+    }
+    if (KB.isKeyDown(KB.KEY_BACKSPACE)){
         setSelected(NONE);
     }
 }
 
 fun void handleKeyboard(){
-    noteSwitch
+    noteSwitch();
     16::ms => now;
 }
 
