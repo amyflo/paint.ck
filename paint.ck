@@ -11,23 +11,9 @@ spork ~ mouse.selfUpdate(); // start updating mouse position
 16 => int NUM_STEPS;  // steps per sequence]
 20 => int ROWS;
 
-1 => int PLAYING;
+0 => int PLAYING;
 
-[
-    60,
-61,
-62,
-63,
-64,
-65,
-66,
-67,
-68,
-69,
-70,
-71
-] @=> int SCALE[];  // relative MIDI offsets for minor pentatonic scale
-
+[60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71] @=> int SCALE[];  
 
 0 =>  int NONE;
 // notes
@@ -50,23 +36,27 @@ spork ~ mouse.selfUpdate(); // start updating mouse position
 
 14 =>  int B;
 
-D_SHARP => int selected;
+C => int selected;
 
 // Scene setup ================================================================
 GG.scene() @=> GScene @ scene;
 GG.camera() @=> GCamera @ cam;
 cam.orthographic();  // Orthographic camera mode for 2D scene
 
-GGen kickPadGroup --> GG.scene();        // bottom row
-GGen snarePadGroup --> GG.scene();       // top row
-GGen openHatPadGroup --> GG.scene();     // left column
-GGen closedHatPadGroup --> GG.scene();   // right column
-
 GGen canvas;
 GGen acidBassGroups[NUM_STEPS];          // one group per column
 for (auto group : acidBassGroups) group --> canvas;
-canvas.sca(0.75);
+canvas.sca(0.65);
+canvas.translateY(-0.5);
 canvas --> GG.scene();
+scene.backgroundColor(Color.BLACK);
+
+GPlane menu; 
+menu --> GG.scene();
+menu.scaX(100);
+menu.scaY(1);
+menu.posZ(-4);
+menu.translateY(-3.1);
 
 // lead pads
 GPad acidBassPads[NUM_STEPS][ROWS];
@@ -83,7 +73,7 @@ fun void resizeListener() {
 } spork ~ resizeListener();
 
 
-15 => int numButtons;
+16 => int numButtons;
 Button notes[numButtons];
 GGen noteGroup;
 noteGroup --> GG.scene();
@@ -96,7 +86,13 @@ fun void placeNotes(Button notes[], GGen @ parent, float width, float height){
         notes[i] @=> Button note;
 
         // initialize pad
-        note.init(mouse);
+        
+        if (i > 12){
+            note.init(mouse, i, 1);
+        } else {
+            note.init(mouse, i, 0);
+        }
+       
 
         // connect to scene
         note --> parent;
@@ -245,7 +241,14 @@ fun void setAll(int note){
 fun void setSelected(int note){
     note => selected;
 
-    // set basic pads
+
+    if (selected ==  NONE){
+        resetNotes(12);
+        
+    } else {
+            resetNotes(selected  - 3);
+    }
+    
     for (int i; i < NUM_STEPS; i++) {
         for (int j; j < ROWS; j++){
             acidBassPads[i][j].setSelected(selected);
@@ -259,9 +262,9 @@ spork ~ sequenceLead(acidBasses, acidBassPads, SCALE, 60 - 2 * 12, STEP / 2.0);
 fun void sequenceBeat(Instrument @ instrument, GPad pads[], int rev, dur step) {
     0 => int i;
     if (rev) pads.size() - 1 => i;
-    while (PLAYING) {
+    while (true) {
         false => int juice;
-        if (pads[i].active()) {
+        if (pads[i].active() && PLAYING) {
             true => juice;
             spork ~ instrument.play();  // play sound
         }
@@ -291,7 +294,7 @@ fun void sequenceLead(AcidBass leads[], GPad pads[][], int scale[], int root, du
             // play all active pads in column
 
             for (0 => int j; j < col.size(); j++) {
-                if (col[j].active()) {
+                if (col[j].active()  && PLAYING) {
                     col[j].play(true);
 
                     // TODO: play the note based on the color
@@ -308,11 +311,9 @@ fun void sequenceLead(AcidBass leads[], GPad pads[][], int scale[], int root, du
     }
 }
 
-
-
 fun void handleKeyboard(){
     if (KB.isKeyDown(KB.KEY_1)){
-        setSelected(C);
+        setSelected(C);    
     }
 
     if (KB.isKeyDown(KB.KEY_2)){
@@ -348,27 +349,49 @@ fun void handleKeyboard(){
     }
     if (KB.isKeyDown(KB.KEY_MINUS)){
         setSelected(A_SHARP);
+
     }
-    if (KB.isKeyDown(KB.KEY_MINUS)){
+    if (KB.isKeyDown(KB.KEY_EQUAL)){
         setSelected(B);
     }
-    if (KB.isKeyDown(KB.KEY_E)){
+    if (KB.isKeyDown(KB.KEY_BACKSPACE)){
         setSelected(NONE);
-    }
-
-    // fill
-    if (KB.isKeyDown(KB.KEY_F)){
-        setAll(selected);
-    }
-    // reset
-    if (KB.isKeyDown(KB.KEY_R)){
-        setAll(NONE);
     }
     16::ms => now;
 }
 
+fun void resetNotes(int exception){
+    for (0 => int i; i < 13; i++){
+        notes[i].turnOff();
+    }
+    notes[exception].turnOn();
+}
+
+fun void handleControls(){
+    //  RESET
+    if (notes[13].on()){
+        setAll(NONE);
+        notes[13].turnOff();
+    }
+    
+    // FILL
+    if (notes[14].on()){
+        setAll(selected);
+        notes[14].turnOff();
+    }
+
+    if (notes[15].on()){
+        1 => PLAYING;
+    } else {
+        0 => PLAYING;
+    }
+}
+
+setSelected(C);
+
 // Game loop ==================================================================
 while (true) { 
     GG.nextFrame() => now; 
+    handleControls();
     handleKeyboard();
 }

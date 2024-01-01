@@ -5,19 +5,17 @@ public class Button extends GGen {
     0 => static int OFF;
     1 => static int ON;
 
-    FlatMaterial mat;
-    pad.mat(mat);
+    GMesh mesh --> this;
+    BoxGeometry boxGeo;
+    PhongMaterial mat;
+    mesh.set(boxGeo, mat);
+    1 => int clickable;
+
 
     // input types
     0 => static int MOUSE_HOVER;
     1 => static int MOUSE_EXIT;
     2 => static int MOUSE_CLICK;
-
-
-    [
-        Color.LIGHTGRAY,      // HOVERED
-        Color.BLACK,     // PLAYING
-    ] @=> vec3 colorMap[];
 
     0 => int state; // current state
 
@@ -25,14 +23,17 @@ public class Button extends GGen {
     Mouse @ mouse;
 
     // events
+    FileTexture textures[2];
     Event onClickEvent;
 
-    fun void init(Mouse @ m) {
+    fun void init(Mouse @ m, int i, int clicky) {
         if (mouse != null) return;
         m @=> this.mouse;
         spork ~ this.clickListener();
+        textures[0].path(me.dir() + "/data/off/" + (i) +  ".png");
+        textures[1].path(me.dir() + "/data/on/" + (i) +  ".png");
+        clicky => clickable;
     }
-
 
     0 => int lastState;
     // enter state, remember last state
@@ -47,18 +48,24 @@ public class Button extends GGen {
 
     fun void turnOn(){
         enter(ON);
+        this.texture(textures[state]);
     }
 
     fun void turnOff(){
         enter(OFF);
+        this.texture(textures[state]);
     }
 
     fun void toggle(){
-        if (on()){
+        if (clickable){
+            if (on()){
             turnOff();
         } else {
             turnOn();
         }
+
+        }
+        
     }
     
     // returns true if mouse is hovering over pad
@@ -76,10 +83,13 @@ public class Button extends GGen {
     }
 
 
-    // set color
-    fun void color(vec3 c) {
-        pad.mat().color(c);
+    // set texture
+    fun void texture(FileTexture tex) {
+        mat.diffuseMap(tex);
+        mesh.set(boxGeo, mat);
     }
+
+
     // handle mouse clicks
     fun void clickListener() {
         now => time lastClick;
@@ -100,6 +110,6 @@ public class Button extends GGen {
         // check if hovered
 
         // update state
-        this.color(colorMap[state]);
+        this.texture(textures[state]);
     }
 }
