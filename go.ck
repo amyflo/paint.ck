@@ -9,6 +9,7 @@
 [
     "mouse.ck",
     "pixel.ck",
+    "button.ck",
     "KB.ck",
     "art.ck"
 ] @=> string files[];
