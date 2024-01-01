@@ -8,8 +8,8 @@ spork ~ mouse.selfUpdate(); // start updating mouse position
 
 120 => int BPM;  // beats per minute
 (1.0/BPM)::minute / 2.0 => dur STEP;  // step duration
-20 => int NUM_STEPS;  // steps per sequence]
-24 => int ROWS;
+16 => int NUM_STEPS;  // steps per sequence]
+20 => int ROWS;
 
 1 => int PLAYING;
 
@@ -62,8 +62,11 @@ GGen snarePadGroup --> GG.scene();       // top row
 GGen openHatPadGroup --> GG.scene();     // left column
 GGen closedHatPadGroup --> GG.scene();   // right column
 
+GGen canvas;
 GGen acidBassGroups[NUM_STEPS];          // one group per column
-for (auto group : acidBassGroups) group --> GG.scene();
+for (auto group : acidBassGroups) group --> canvas;
+canvas.sca(0.75);
+canvas --> GG.scene();
 
 // lead pads
 GPad acidBassPads[NUM_STEPS][ROWS];
@@ -79,6 +82,32 @@ fun void resizeListener() {
     }
 } spork ~ resizeListener();
 
+
+15 => int numButtons;
+Button notes[numButtons];
+GGen noteGroup;
+noteGroup --> GG.scene();
+
+fun void placeNotes(Button notes[], GGen @ parent, float width, float height){
+
+    // .95 *=> height;
+    width / notes.size() => float noteSpacing;
+    for (0 => int i; i < notes.size(); i++) {
+        notes[i] @=> Button note;
+
+        // initialize pad
+        note.init(mouse);
+
+        // connect to scene
+        note --> parent;
+
+        // set transform
+        note.sca(noteSpacing * .95);
+        note.posX(noteSpacing * i - width / 2.0 + noteSpacing / 2.0);
+        note.posY(noteSpacing * 0 - height / 2.0 + noteSpacing / 2.0);
+    }
+}
+
 // place pads based on window size
 fun void placePads() {
     // recalculate aspect
@@ -88,11 +117,12 @@ fun void placePads() {
     frustrumHeight * aspect => float frustrumWidth;  // widht of the screen in world-space units
     frustrumWidth / NUM_STEPS => float padSpacing;
 
+    placeNotes(notes, noteGroup, frustrumWidth, frustrumHeight);
 
     for (0 => int i; i < NUM_STEPS; i++) {
         placePadsHorizontal(
         acidBassPads[i], acidBassGroups[i],
-        frustrumWidth, frustrumHeight, i
+        frustrumWidth, frustrumHeight - padSpacing, i
         );
     }
 }

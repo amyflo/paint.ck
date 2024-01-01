@@ -148,7 +148,7 @@ public class GPad extends GGen {
     }
 
     fun void animate_in(){
-        pad.sca(1.1);
+        pad.sca(0.5);
     }
 
     fun void animate_out(){
