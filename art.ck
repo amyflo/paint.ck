@@ -46,7 +46,6 @@ spork ~ mouse.selfUpdate(); // start updating mouse position
 13 => int A_SHARP;
 
 14 => int B;
-15 => int B_SHARP;
 
 16 => int CLEAR;
 17 => int SET_ALL;
@@ -288,11 +287,18 @@ fun void noteSwitch(){
     if (KB.isKeyDown(KB.KEY_MINUS)){
         setSelected(B);
     }
-    if (KB.isKeyDown(KB.KEY_EQUAL)){
-        setSelected(B_SHARP);
-    }
     if (KB.isKeyDown(KB.KEY_BACKSPACE)){
         setSelected(NONE);
+    }
+
+    // fill all
+    if (KB.isKeyDown(KB.KEY_A)){
+        setAll(selected);
+    }
+
+    // reset
+    if (KB.isKeyDown(KB.KEY_R)){
+        setAll(NONE);
     }
 }
 
