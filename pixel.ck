@@ -74,7 +74,7 @@ public class GPad extends GGen {
 
     // check if state is active (i.e. should play sound)
     fun int active() {
-        return !(state == NONE || state == HOVERED);
+        return state >  PLAYING;
     }
 
     fun int getSelected(){

@@ -11,7 +11,7 @@
     "pixel.ck",
     "button.ck",
     "KB.ck",
-    "art.ck"
+    "paint.ck"
 ] @=> string files[];
 
 for (auto file : files)
