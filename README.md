@@ -4,7 +4,7 @@
 # paint.ck
 paint.ck is a pixel art drawing beat sequencer built using ChucK and ChuGL. Each note on the 12-note chromatic scale is represented by a unique color, in roughly rainbow order. The tool is fully functional both as a musical and drawing application. Created for CS476A Fall 2023 at Stanford University. 
 
-[Watch the demo on YouTube](https://youtu.be/UwEDb3IMif4?si=IBGKEFWVAo3n4qph) | [Learn more about this project on Medium](https://amyflo.medium.com/groove-n-bloom-cs476a-hw-3-beat-sequencer-d80f617fa5ed)
+[Watch the demo on YouTube](https://youtu.be/slL0Rl0X4yU?si=qrepCQLagmgNz0kw) | [Learn more about this project on Medium](https://amyflo.medium.com/paint-ck-cs476a-hw-4-final-project-e1e638765bcc)
 
 ## Instructions.
 
@@ -29,4 +29,3 @@ backspace selects the erase tool.
 - r resets the canvas to the default grid.
 - f fills the canvas with the selected color
 - d (left) and a (right) can be pressed to quickly move through the note inventory.
-
