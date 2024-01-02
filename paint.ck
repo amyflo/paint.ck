@@ -6,10 +6,11 @@ spork ~ mouse.selfUpdate(); // start updating mouse position
 
 // Global Sequencer Params ====================================================
 
-120 => int BPM;  // beats per minute
+60 => int BPM;  // beats per minute
 (1.0/BPM)::minute / 2.0 => dur STEP;  // step duration
 16 => int NUM_STEPS;  // steps per sequence]
 20 => int ROWS;
+
 
 0 => int PLAYING;
 
@@ -44,8 +45,8 @@ GG.camera() @=> GCamera @ cam;
 cam.orthographic();  // Orthographic camera mode for 2D scene
 
 GGen canvas;
-GGen acidBassGroups[NUM_STEPS];          // one group per column
-for (auto group : acidBassGroups) group --> canvas;
+GGen BitBassGroups[NUM_STEPS];          // one group per column
+for (auto group : BitBassGroups) group --> canvas;
 canvas.sca(0.65);
 canvas.translateY(-0.5);
 canvas --> GG.scene();
@@ -59,7 +60,7 @@ menu.posZ(-4);
 menu.translateY(-3.1);
 
 // lead pads
-GPad acidBassPads[NUM_STEPS][ROWS];
+GPad BitBassPads[NUM_STEPS][ROWS];
 
 // update pad positions on window resize
 fun void resizeListener() {
@@ -117,7 +118,7 @@ fun void placePads() {
 
     for (0 => int i; i < NUM_STEPS; i++) {
         placePadsHorizontal(
-        acidBassPads[i], acidBassGroups[i],
+        BitBassPads[i], BitBassGroups[i],
         frustrumWidth, frustrumHeight - padSpacing, i
         );
     }
@@ -147,45 +148,31 @@ fun void placePadsHorizontal(GPad pads[], GGen @ parent, float width, float heig
 
 // Instruments ==================================================================
 
-class AcidBass extends Chugraph {
-    SawOsc saw1, saw2;
+class BitBass extends Chugraph {
+    PulseOsc saw1, saw2;
     ADSR env;                                      // amplitude EG
     Step step => Envelope filterEnv => blackhole;  // filter cutoff EG
     LPF filter;
 
-    TriOsc freqLFO => blackhole;  // LFO to modulate filter frequency
-    TriOsc qLFO => blackhole;     // LFO to modulate filter resonance
+    PulseOsc freqLFO => blackhole;  // LFO to modulate filter frequency
+    PulseOsc qLFO => blackhole;     // LFO to modulate filter resonance
     saw1 => env => filter => Gain g => outlet;
-    saw2 => env => filter;
+    saw2 => env => filter => g => outlet;
 
     // initialize amp EG
-    env.set(40::ms, 10::ms, .6, 150::ms);
+    env.set(20::ms, 30::ms, .9, 100::ms);
 
     // initialize filter EG
-    step.next(1.0);
-    filterEnv.duration(50::ms);
+    step.next(3.0);
+    filterEnv.duration(100::ms);
 
     // initialize filter LFOs
     freqLFO.period(8::second);
     qLFO.period(10::second);
 
     // initialize filter
-    filter.freq(1500);
-    filter.Q(10);
-
-    fun void modulate() {
-        while (true) {
-            // remap [-1, 1] --> [100, 2600]
-            Math.map(freqLFO.last(), -1.0, 1.0, 100, 12000) => float filterFreq;
-            // remap [-1, 1] --> [1, 10]
-            Math.map(qLFO.last(), -1.0, 1.0, .1, 8) => filter.Q;
-             
-            // apply filter EG
-            filterEnv.last() * filterFreq + 100 => filter.freq;
-
-            1::ms => now;
-        }
-    } spork ~ modulate();
+    filter.freq(100);
+    filter.Q(100);
 
     // spork to play!
     fun void play(int note) {
@@ -220,10 +207,10 @@ Gain main => JCRev rev => dac;  // main bus
 0.1 => rev.mix;
 
 // initialzie lead instrument
-AcidBass acidBasses[ROWS];
-for (auto bass : acidBasses) {
+BitBass BitBasses[ROWS];
+for (auto bass : BitBasses) {
     bass => main;
-    bass.gain(3.0 / acidBasses.size());  // reduce gain according to # of voices
+    bass.gain(3.0 / BitBasses.size());  // reduce gain according to # of voices
 }
 
 fun void setAll(int note){
@@ -232,7 +219,7 @@ fun void setAll(int note){
     // set basic pads
     for (int i; i < NUM_STEPS; i++) {
         for (int j; j < ROWS; j++){
-            acidBassPads[i][j].setState(selected);
+            BitBassPads[i][j].setState(selected);
         }
     }
 }
@@ -251,12 +238,12 @@ fun void setSelected(int note){
     
     for (int i; i < NUM_STEPS; i++) {
         for (int j; j < ROWS; j++){
-            acidBassPads[i][j].setSelected(selected);
+            BitBassPads[i][j].setSelected(selected);
         }
     }
 }
 
-spork ~ sequenceLead(acidBasses, acidBassPads, SCALE, 60 - 2 * 12, STEP / 2.0);
+spork ~ sequenceLead(BitBasses, BitBassPads, SCALE, 60 - 2 * 12, STEP / 2.0);
 
 // sequence percussion (monophonic)
 fun void sequenceBeat(Instrument @ instrument, GPad pads[], int rev, dur step) {
@@ -287,7 +274,7 @@ fun void sequenceBeat(Instrument @ instrument, GPad pads[], int rev, dur step) {
 } 
 
 // sequence lead (polyphonic)
-fun void sequenceLead(AcidBass leads[], GPad pads[][], int scale[], int root, dur step) {
+fun void sequenceLead(BitBass leads[], GPad pads[][], int scale[], int root, dur step) {
     while (true) {
         for (0 => int i; i < pads.size(); i++) {
             pads[i] @=> GPad col[];
@@ -312,6 +299,8 @@ fun void sequenceLead(AcidBass leads[], GPad pads[][], int scale[], int root, du
 }
 
 fun void handleKeyboard(){
+
+
     if (KB.isKeyDown(KB.KEY_1)){
         setSelected(C);    
     }
@@ -357,6 +346,43 @@ fun void handleKeyboard(){
     if (KB.isKeyDown(KB.KEY_BACKSPACE)){
         setSelected(NONE);
     }
+
+    if (KB.isKeyDown(KB.KEY_R)){
+        setAll(NONE);
+        notes[13].turnOff();
+    }
+    if (KB.isKeyDown(KB.KEY_F)){
+        setAll(selected);
+        notes[14].turnOff();
+    }
+
+    if (KB.isKeyDown(KB.KEY_A)){
+        
+        if (selected == NONE){
+            setSelected(B);
+            200::ms => now;
+        } else if (selected == C) {
+            setSelected(NONE);
+            200::ms => now;
+        }else {
+            setSelected(selected -  1);
+            200::ms => now;
+        }
+    }
+
+    if (KB.isKeyDown(KB.KEY_D)){
+        
+        if (selected == NONE){
+            setSelected(C);
+            200::ms => now;
+        } else if (selected == B) {
+            setSelected(NONE);
+            200::ms => now;
+        }else {
+            setSelected(selected +  1);
+            200::ms => now;
+        }
+    }
     16::ms => now;
 }
 
@@ -386,6 +412,8 @@ fun void handleControls(){
         0 => PLAYING;
     }
 }
+
+
 
 setSelected(C);
 
