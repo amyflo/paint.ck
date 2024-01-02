@@ -6,28 +6,15 @@ spork ~ mouse.selfUpdate(); // start updating mouse position
 
 // Global Sequencer Params ====================================================
 
-120 => int BPM;  // beats per minute
+60 => int BPM;  // beats per minute
 (1.0/BPM)::minute / 2.0 => dur STEP;  // step duration
-20 => int NUM_STEPS;  // steps per sequence]
-24 => int ROWS;
+16 => int NUM_STEPS;  // steps per sequence]
+20 => int ROWS;
 
-1 => int PLAYING;
 
-[
-    60,
-61,
-62,
-63,
-64,
-65,
-66,
-67,
-68,
-69,
-70,
-71
-] @=> int SCALE[];  // relative MIDI offsets for minor pentatonic scale
+0 => int PLAYING;
 
+[60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71] @=> int SCALE[];  
 
 0 =>  int NONE;
 // notes
@@ -50,23 +37,30 @@ spork ~ mouse.selfUpdate(); // start updating mouse position
 
 14 =>  int B;
 
-D_SHARP => int selected;
+C => int selected;
 
 // Scene setup ================================================================
 GG.scene() @=> GScene @ scene;
 GG.camera() @=> GCamera @ cam;
 cam.orthographic();  // Orthographic camera mode for 2D scene
 
-GGen kickPadGroup --> GG.scene();        // bottom row
-GGen snarePadGroup --> GG.scene();       // top row
-GGen openHatPadGroup --> GG.scene();     // left column
-GGen closedHatPadGroup --> GG.scene();   // right column
+GGen canvas;
+GGen BitBassGroups[NUM_STEPS];          // one group per column
+for (auto group : BitBassGroups) group --> canvas;
+canvas.sca(0.65);
+canvas.translateY(-0.5);
+canvas --> GG.scene();
+scene.backgroundColor(Color.BLACK);
 
-GGen acidBassGroups[NUM_STEPS];          // one group per column
-for (auto group : acidBassGroups) group --> GG.scene();
+GPlane menu; 
+menu --> GG.scene();
+menu.scaX(100);
+menu.scaY(1);
+menu.posZ(-4);
+menu.translateY(-3.1);
 
 // lead pads
-GPad acidBassPads[NUM_STEPS][ROWS];
+GPad BitBassPads[NUM_STEPS][ROWS];
 
 // update pad positions on window resize
 fun void resizeListener() {
@@ -79,6 +73,38 @@ fun void resizeListener() {
     }
 } spork ~ resizeListener();
 
+
+16 => int numButtons;
+Button notes[numButtons];
+GGen noteGroup;
+noteGroup --> GG.scene();
+
+fun void placeNotes(Button notes[], GGen @ parent, float width, float height){
+
+    // .95 *=> height;
+    width / notes.size() => float noteSpacing;
+    for (0 => int i; i < notes.size(); i++) {
+        notes[i] @=> Button note;
+
+        // initialize pad
+        
+        if (i > 12){
+            note.init(mouse, i, 1);
+        } else {
+            note.init(mouse, i, 0);
+        }
+       
+
+        // connect to scene
+        note --> parent;
+
+        // set transform
+        note.sca(noteSpacing * .95);
+        note.posX(noteSpacing * i - width / 2.0 + noteSpacing / 2.0);
+        note.posY(noteSpacing * 0 - height / 2.0 + noteSpacing / 2.0);
+    }
+}
+
 // place pads based on window size
 fun void placePads() {
     // recalculate aspect
@@ -88,11 +114,12 @@ fun void placePads() {
     frustrumHeight * aspect => float frustrumWidth;  // widht of the screen in world-space units
     frustrumWidth / NUM_STEPS => float padSpacing;
 
+    placeNotes(notes, noteGroup, frustrumWidth, frustrumHeight);
 
     for (0 => int i; i < NUM_STEPS; i++) {
         placePadsHorizontal(
-        acidBassPads[i], acidBassGroups[i],
-        frustrumWidth, frustrumHeight, i
+        BitBassPads[i], BitBassGroups[i],
+        frustrumWidth, frustrumHeight - padSpacing, i
         );
     }
 }
@@ -121,45 +148,31 @@ fun void placePadsHorizontal(GPad pads[], GGen @ parent, float width, float heig
 
 // Instruments ==================================================================
 
-class AcidBass extends Chugraph {
-    SawOsc saw1, saw2;
+class BitBass extends Chugraph {
+    PulseOsc saw1, saw2;
     ADSR env;                                      // amplitude EG
     Step step => Envelope filterEnv => blackhole;  // filter cutoff EG
     LPF filter;
 
-    TriOsc freqLFO => blackhole;  // LFO to modulate filter frequency
-    TriOsc qLFO => blackhole;     // LFO to modulate filter resonance
+    PulseOsc freqLFO => blackhole;  // LFO to modulate filter frequency
+    PulseOsc qLFO => blackhole;     // LFO to modulate filter resonance
     saw1 => env => filter => Gain g => outlet;
-    saw2 => env => filter;
+    saw2 => env => filter => g => outlet;
 
     // initialize amp EG
-    env.set(40::ms, 10::ms, .6, 150::ms);
+    env.set(20::ms, 30::ms, .9, 100::ms);
 
     // initialize filter EG
-    step.next(1.0);
-    filterEnv.duration(50::ms);
+    step.next(3.0);
+    filterEnv.duration(100::ms);
 
     // initialize filter LFOs
     freqLFO.period(8::second);
     qLFO.period(10::second);
 
     // initialize filter
-    filter.freq(1500);
-    filter.Q(10);
-
-    fun void modulate() {
-        while (true) {
-            // remap [-1, 1] --> [100, 2600]
-            Math.map(freqLFO.last(), -1.0, 1.0, 100, 12000) => float filterFreq;
-            // remap [-1, 1] --> [1, 10]
-            Math.map(qLFO.last(), -1.0, 1.0, .1, 8) => filter.Q;
-             
-            // apply filter EG
-            filterEnv.last() * filterFreq + 100 => filter.freq;
-
-            1::ms => now;
-        }
-    } spork ~ modulate();
+    filter.freq(100);
+    filter.Q(100);
 
     // spork to play!
     fun void play(int note) {
@@ -194,10 +207,10 @@ Gain main => JCRev rev => dac;  // main bus
 0.1 => rev.mix;
 
 // initialzie lead instrument
-AcidBass acidBasses[ROWS];
-for (auto bass : acidBasses) {
+BitBass BitBasses[ROWS];
+for (auto bass : BitBasses) {
     bass => main;
-    bass.gain(3.0 / acidBasses.size());  // reduce gain according to # of voices
+    bass.gain(3.0 / BitBasses.size());  // reduce gain according to # of voices
 }
 
 fun void setAll(int note){
@@ -206,7 +219,7 @@ fun void setAll(int note){
     // set basic pads
     for (int i; i < NUM_STEPS; i++) {
         for (int j; j < ROWS; j++){
-            acidBassPads[i][j].setState(selected);
+            BitBassPads[i][j].setState(selected);
         }
     }
 }
@@ -215,23 +228,30 @@ fun void setAll(int note){
 fun void setSelected(int note){
     note => selected;
 
-    // set basic pads
+
+    if (selected ==  NONE){
+        resetNotes(12);
+        
+    } else {
+            resetNotes(selected  - 3);
+    }
+    
     for (int i; i < NUM_STEPS; i++) {
         for (int j; j < ROWS; j++){
-            acidBassPads[i][j].setSelected(selected);
+            BitBassPads[i][j].setSelected(selected);
         }
     }
 }
 
-spork ~ sequenceLead(acidBasses, acidBassPads, SCALE, 60 - 2 * 12, STEP / 2.0);
+spork ~ sequenceLead(BitBasses, BitBassPads, SCALE, 60 - 2 * 12, STEP / 2.0);
 
 // sequence percussion (monophonic)
 fun void sequenceBeat(Instrument @ instrument, GPad pads[], int rev, dur step) {
     0 => int i;
     if (rev) pads.size() - 1 => i;
-    while (PLAYING) {
+    while (true) {
         false => int juice;
-        if (pads[i].active()) {
+        if (pads[i].active() && PLAYING) {
             true => juice;
             spork ~ instrument.play();  // play sound
         }
@@ -254,14 +274,14 @@ fun void sequenceBeat(Instrument @ instrument, GPad pads[], int rev, dur step) {
 } 
 
 // sequence lead (polyphonic)
-fun void sequenceLead(AcidBass leads[], GPad pads[][], int scale[], int root, dur step) {
+fun void sequenceLead(BitBass leads[], GPad pads[][], int scale[], int root, dur step) {
     while (true) {
         for (0 => int i; i < pads.size(); i++) {
             pads[i] @=> GPad col[];
             // play all active pads in column
 
             for (0 => int j; j < col.size(); j++) {
-                if (col[j].active()) {
+                if (col[j].active()  && PLAYING) {
                     col[j].play(true);
 
                     // TODO: play the note based on the color
@@ -278,11 +298,11 @@ fun void sequenceLead(AcidBass leads[], GPad pads[][], int scale[], int root, du
     }
 }
 
-
-
 fun void handleKeyboard(){
+
+
     if (KB.isKeyDown(KB.KEY_1)){
-        setSelected(C);
+        setSelected(C);    
     }
 
     if (KB.isKeyDown(KB.KEY_2)){
@@ -318,27 +338,88 @@ fun void handleKeyboard(){
     }
     if (KB.isKeyDown(KB.KEY_MINUS)){
         setSelected(A_SHARP);
+
     }
-    if (KB.isKeyDown(KB.KEY_MINUS)){
+    if (KB.isKeyDown(KB.KEY_EQUAL)){
         setSelected(B);
     }
-    if (KB.isKeyDown(KB.KEY_E)){
+    if (KB.isKeyDown(KB.KEY_BACKSPACE)){
         setSelected(NONE);
     }
 
-    // fill
-    if (KB.isKeyDown(KB.KEY_F)){
-        setAll(selected);
-    }
-    // reset
     if (KB.isKeyDown(KB.KEY_R)){
         setAll(NONE);
+        notes[13].turnOff();
+    }
+    if (KB.isKeyDown(KB.KEY_F)){
+        setAll(selected);
+        notes[14].turnOff();
+    }
+
+    if (KB.isKeyDown(KB.KEY_A)){
+        
+        if (selected == NONE){
+            setSelected(B);
+            200::ms => now;
+        } else if (selected == C) {
+            setSelected(NONE);
+            200::ms => now;
+        }else {
+            setSelected(selected -  1);
+            200::ms => now;
+        }
+    }
+
+    if (KB.isKeyDown(KB.KEY_D)){
+        
+        if (selected == NONE){
+            setSelected(C);
+            200::ms => now;
+        } else if (selected == B) {
+            setSelected(NONE);
+            200::ms => now;
+        }else {
+            setSelected(selected +  1);
+            200::ms => now;
+        }
     }
     16::ms => now;
 }
 
+fun void resetNotes(int exception){
+    for (0 => int i; i < 13; i++){
+        notes[i].turnOff();
+    }
+    notes[exception].turnOn();
+}
+
+fun void handleControls(){
+    //  RESET
+    if (notes[13].on()){
+        setAll(NONE);
+        notes[13].turnOff();
+    }
+    
+    // FILL
+    if (notes[14].on()){
+        setAll(selected);
+        notes[14].turnOff();
+    }
+
+    if (notes[15].on()){
+        1 => PLAYING;
+    } else {
+        0 => PLAYING;
+    }
+}
+
+
+
+setSelected(C);
+
 // Game loop ==================================================================
 while (true) { 
     GG.nextFrame() => now; 
+    handleControls();
     handleKeyboard();
 }

@@ -36,18 +36,18 @@ public class GPad extends GGen {
         Color.BLACK,     // PLAYING
 
         // ACTIVE
-        Color.RED, // C
-        Color.ORANGE, // C#
-        Color.YELLOW, // D
-        Color.GREEN, // D#
-        Color.BLUE,// E
-        Color.MAGENTA,// F
-        Color.VIOLET,// F#
-        Color.PINK, // G
-        Color.BROWN, // G#
-        Color.BLACK,// A
-        Color.MAROON,// A#
-        Color.GOLD, // B
+        (@(0.9216, 0.3412, 0.3412)),
+        @(0.9216, 0.3412, 0.7255),
+        @(0.949, 0.6, 0.2902),
+        @(0.6549, 0.4863, 0.051),
+        @(0.949, 0.7882, 0.298),
+        @(0.1529, 0.6824, 0.3765),
+        @(0.1294, 0.5882, 0.3255),
+        @(0.3373, 0.8, 0.949),
+        @(0.1843, 0.502, 0.9294),
+        @(0.7333, 0.4196, 0.8509),
+        @(0.3529, 0.1922, 0.0784),
+        @(0.3098, 0.3098, 0.3098)
     ] @=> vec3 colorMap[];
 
     // input types
@@ -58,7 +58,7 @@ public class GPad extends GGen {
     4 => static int NOTE_OFF;
 
     0 => int state; // current state
-    NONE => int selected;
+    C => int selected;
 
     // reference to a mouse
     Mouse @ mouse;
@@ -148,7 +148,7 @@ public class GPad extends GGen {
     }
 
     fun void animate_in(){
-        pad.sca(1.1);
+        pad.sca(0.5);
     }
 
     fun void animate_out(){
